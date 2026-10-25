@@ -57,6 +57,9 @@ del pngquant.zip
 Save the following code as `compress_gui.py`:
 
 ```python
+
+
+
 import os
 import shutil
 import subprocess
@@ -68,7 +71,7 @@ import webbrowser
 
 
 def get_tool_path(tool_name):
-  """Locates required binary tools from PyInstaller bundle, local folder, or PATH."""
+  """Locate executable binary from PyInstaller bundle, script folder, or system PATH."""
   if hasattr(sys, "_MEIPASS"):
     bundled_path = os.path.join(sys._MEIPASS, tool_name)
     if os.path.exists(bundled_path):
@@ -88,9 +91,10 @@ class PNGCompressorGUI:
   def __init__(self, root):
     self.root = root
     self.root.title("PNG Sequence Optimizer")
-    self.root.geometry("560x620")
+    self.root.geometry("580x670")
     self.root.resizable(False, False)
 
+    # Window Icon
     icon_path = get_tool_path("icon.ico")
     if os.path.exists(icon_path):
       try:
@@ -103,15 +107,17 @@ class PNGCompressorGUI:
     self.save_mode = tk.StringVar(value="overwrite")
     self.tool_mode = tk.StringVar(value="Both (Pngquant + OxiPNG)")
 
-    self.min_q = tk.IntVar(value=65)
-    self.max_q = tk.IntVar(value=85)
+    # Compression tuning variables
+    self.min_q = tk.IntVar(value=50)
+    self.max_q = tk.IntVar(value=80)
+    self.max_colors = tk.IntVar(value=256)
     self.oxi_level = tk.IntVar(value=4)
 
     self._build_ui()
 
   def _build_ui(self):
-    # Folder Settings Frame
-    f_frame = ttk.LabelFrame(self.root, text=" Folder Settings ", padding=10)
+    # 1. Folder Management
+    f_frame = ttk.LabelFrame(self.root, text=" Directory Settings ", padding=10)
     f_frame.pack(fill="x", padx=15, pady=8)
 
     ttk.Label(
@@ -119,7 +125,7 @@ class PNGCompressorGUI:
     ).pack(anchor="w")
     s_box = ttk.Frame(f_frame)
     s_box.pack(fill="x", pady=(2, 8))
-    ttk.Entry(s_box, textvariable=self.source_folder, width=48).pack(
+    ttk.Entry(s_box, textvariable=self.source_folder, width=50).pack(
         side="left", padx=(0, 5)
     )
     ttk.Button(s_box, text="Browse", command=self.browse_source).pack(
@@ -127,7 +133,7 @@ class PNGCompressorGUI:
     )
 
     ttk.Label(
-        f_frame, text="Save Mode / Destination:", font=("Segoe UI", 9, "bold")
+        f_frame, text="Destination Mode:", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w")
     radio_box = ttk.Frame(f_frame)
     radio_box.pack(fill="x", pady=2)
@@ -137,10 +143,10 @@ class PNGCompressorGUI:
         variable=self.save_mode,
         value="overwrite",
         command=self.toggle_dest_state,
-    ).pack(side="left", padx=(0, 15))
+    ).pack(side="left", padx=(0, 20))
     ttk.Radiobutton(
         radio_box,
-        text="Save to New Destination",
+        text="Save to Target Folder",
         variable=self.save_mode,
         value="destination",
         command=self.toggle_dest_state,
@@ -149,7 +155,7 @@ class PNGCompressorGUI:
     self.d_box = ttk.Frame(f_frame)
     self.d_box.pack(fill="x", pady=(5, 0))
     self.dest_entry = ttk.Entry(
-        self.d_box, textvariable=self.dest_folder, width=48, state="disabled"
+        self.d_box, textvariable=self.dest_folder, width=50, state="disabled"
     )
     self.dest_entry.pack(side="left", padx=(0, 5))
     self.dest_btn = ttk.Button(
@@ -157,9 +163,9 @@ class PNGCompressorGUI:
     )
     self.dest_btn.pack(side="left")
 
-    # Compression Settings Frame
+    # 2. Engine and Parameters Settings
     s_frame = ttk.LabelFrame(
-        self.root, text=" Compression Settings ", padding=10
+        self.root, text=" Compression Parameters ", padding=10
     )
     s_frame.pack(fill="x", padx=15, pady=6)
 
@@ -176,20 +182,20 @@ class PNGCompressorGUI:
             "OxiPNG Only",
         ],
     )
-    self.engine_combo.pack(fill="x", pady=(2, 10))
+    self.engine_combo.pack(fill="x", pady=(2, 8))
     self.engine_combo.bind("<<ComboboxSelected>>", self.toggle_slider_states)
 
+    # Pngquant Quality Slider
     self.lbl_pq_title = ttk.Label(
         s_frame,
-        text="Pngquant Quality (Min - Max):",
+        text="Pngquant Quality Range (Min - Max):",
         font=("Segoe UI", 9, "bold"),
     )
     self.lbl_pq_title.pack(anchor="w")
 
     self.q_box = ttk.Frame(s_frame)
     self.q_box.pack(fill="x", pady=2)
-    self.lbl_min_tag = ttk.Label(self.q_box, text="Min:")
-    self.lbl_min_tag.pack(side="left")
+    ttk.Label(self.q_box, text="Min:").pack(side="left")
     self.scale_min = ttk.Scale(
         self.q_box,
         from_=10,
@@ -198,11 +204,10 @@ class PNGCompressorGUI:
         command=lambda v: self.lbl_min.config(text=f"{int(float(v))}%"),
     )
     self.scale_min.pack(side="left", fill="x", expand=True, padx=5)
-    self.lbl_min = ttk.Label(self.q_box, text="65%", width=5)
+    self.lbl_min = ttk.Label(self.q_box, text=f"{self.min_q.get()}%", width=5)
     self.lbl_min.pack(side="left")
 
-    self.lbl_max_tag = ttk.Label(self.q_box, text="Max:")
-    self.lbl_max_tag.pack(side="left", padx=(10, 0))
+    ttk.Label(self.q_box, text="Max:").pack(side="left", padx=(10, 0))
     self.scale_max = ttk.Scale(
         self.q_box,
         from_=10,
@@ -211,11 +216,35 @@ class PNGCompressorGUI:
         command=lambda v: self.lbl_max.config(text=f"{int(float(v))}%"),
     )
     self.scale_max.pack(side="left", fill="x", expand=True, padx=5)
-    self.lbl_max = ttk.Label(self.q_box, text="85%", width=5)
+    self.lbl_max = ttk.Label(self.q_box, text=f"{self.max_q.get()}%", width=5)
     self.lbl_max.pack(side="left")
 
+    # Max Colors (Quantization Cap)
+    ttk.Label(
+        s_frame,
+        text="Color Palette Limit (Max Colors):",
+        font=("Segoe UI", 9, "bold"),
+    ).pack(anchor="w", pady=(8, 0))
+    self.c_box = ttk.Frame(s_frame)
+    self.c_box.pack(fill="x", pady=2)
+    self.scale_colors = ttk.Scale(
+        self.c_box,
+        from_=32,
+        to=256,
+        variable=self.max_colors,
+        command=lambda v: self.lbl_colors.config(text=str(int(float(v)))),
+    )
+    self.scale_colors.pack(side="left", fill="x", expand=True, padx=5)
+    self.lbl_colors = ttk.Label(
+        self.c_box, text=str(self.max_colors.get()), width=5
+    )
+    self.lbl_colors.pack(side="left")
+
+    # OxiPNG Level Slider
     self.lbl_oxi_title = ttk.Label(
-        s_frame, text="OxiPNG Level (1 to 6):", font=("Segoe UI", 9, "bold")
+        s_frame,
+        text="OxiPNG Level (1 = Fast, 6 = Maximum):",
+        font=("Segoe UI", 9, "bold"),
     )
     self.lbl_oxi_title.pack(anchor="w", pady=(8, 0))
 
@@ -229,10 +258,10 @@ class PNGCompressorGUI:
         command=lambda v: self.lbl_oxi.config(text=str(int(float(v)))),
     )
     self.scale_oxi.pack(side="left", fill="x", expand=True, padx=5)
-    self.lbl_oxi = ttk.Label(self.oxi_box, text="4", width=5)
+    self.lbl_oxi = ttk.Label(self.oxi_box, text=str(self.oxi_level.get()), width=5)
     self.lbl_oxi.pack(side="left")
 
-    # Progress Bar & Status
+    # 3. Progress and Status
     self.prog_bar = ttk.Progressbar(self.root, mode="determinate")
     self.prog_bar.pack(fill="x", padx=15, pady=(10, 4))
 
@@ -241,7 +270,7 @@ class PNGCompressorGUI:
     )
     self.status_lbl.pack(anchor="w", padx=15)
 
-    # Action Buttons
+    # 4. Action Buttons
     btn_frame = ttk.Frame(self.root)
     btn_frame.pack(fill="x", padx=15, pady=10)
 
@@ -255,7 +284,7 @@ class PNGCompressorGUI:
     )
     self.btn_about.pack(side="right")
 
-    # Footer
+    # 5. Developer Attribution Footer
     footer_frame = ttk.Frame(self.root)
     footer_frame.pack(side="bottom", pady=8)
 
@@ -282,14 +311,14 @@ class PNGCompressorGUI:
   def show_about(self):
     about_text = (
         "PNG Sequence Optimizer\n\n"
-        "A lightweight desktop GUI utility to compress PNG sequences and images "
-        "with alpha channel preservation.\n\n"
+        "A multi-threaded desktop GUI tool designed to batch-compress sequential frames "
+        "and graphics while retaining high transparency fidelity.\n\n"
         "Developer: Shams Sohag\n"
         "GitHub: https://github.com/shamssohag\n\n"
-        "Powered by:\n"
-        "- Pngquant (Quantization Engine)\n"
-        "- OxiPNG (Lossless Optimizer)\n"
-        "- Icon by Magnific (Flaticon)"
+        "Engines:\n"
+        "• Pngquant (8-bit Quantization Engine)\n"
+        "• OxiPNG (Lossless Optimizer & Chunk Stripper)\n"
+        "• Icon Credit: Magnific (Flaticon)"
     )
     messagebox.showinfo("About PNG Optimizer", about_text)
 
@@ -316,6 +345,7 @@ class PNGCompressorGUI:
 
     self.scale_min.config(state=pq_state)
     self.scale_max.config(state=pq_state)
+    self.scale_colors.config(state=pq_state)
     self.scale_oxi.config(state=oxi_state)
 
   def browse_source(self):
@@ -346,7 +376,7 @@ class PNGCompressorGUI:
   def start_process_thread(self):
     src = self.source_folder.get().strip()
     if not src or not os.path.isdir(src):
-      messagebox.showerror("Error", "Please select a valid source directory.")
+      messagebox.showerror("Error", "Please select a valid Source Folder!")
       return
 
     is_overwrite = self.save_mode.get() == "overwrite"
@@ -354,9 +384,7 @@ class PNGCompressorGUI:
     if not is_overwrite:
       dst = self.dest_folder.get().strip()
       if not dst:
-        messagebox.showerror(
-            "Error", "Please select a valid destination directory."
-        )
+        messagebox.showerror("Error", "Please select a Target Folder!")
         return
       os.makedirs(dst, exist_ok=True)
 
@@ -365,19 +393,20 @@ class PNGCompressorGUI:
     if min_val > max_val:
       min_val, max_val = max_val, min_val
 
+    colors = int(self.max_colors.get())
     oxi_lvl = int(self.oxi_level.get())
     engine = self.tool_mode.get()
 
     self.btn_run.config(state="disabled")
     thread = threading.Thread(
         target=self.run_compression,
-        args=(src, dst, is_overwrite, engine, min_val, max_val, oxi_lvl),
+        args=(src, dst, is_overwrite, engine, min_val, max_val, colors, oxi_lvl),
         daemon=True,
     )
     thread.start()
 
   def run_compression(
-      self, src, dst, is_overwrite, engine, min_val, max_val, oxi_lvl
+      self, src, dst, is_overwrite, engine, min_val, max_val, colors, oxi_lvl
   ):
     try:
       files = sorted(
@@ -387,7 +416,7 @@ class PNGCompressorGUI:
       self.root.after(
           0,
           self.finish_process,
-          f"Failed to read folder: {str(e)}",
+          f"Unable to read folder: {str(e)}",
           True,
       )
       return
@@ -397,7 +426,7 @@ class PNGCompressorGUI:
       self.root.after(
           0,
           self.finish_process,
-          "No PNG images found in source folder.",
+          "No PNG files found in the source directory!",
           True,
       )
       return
@@ -422,7 +451,7 @@ class PNGCompressorGUI:
           self.root.after(
               0,
               self.finish_process,
-              f"Failed copying {f}: {str(e)}",
+              f"Failed to copy file: {str(e)}",
               True,
           )
           return
@@ -431,10 +460,15 @@ class PNGCompressorGUI:
 
       self.root.after(0, self.update_ui_progress, idx, total, f)
 
+      # 1. High-efficiency Pngquant Pipeline
       if use_pq:
         cmd_pngquant = [
             pngquant_bin,
             f"--quality={min_val}-{max_val}",
+            str(colors),
+            "--speed",
+            "1",  # Brute-force optimal color matching
+            "--strip",
             "--ext",
             ".png",
             "--force",
@@ -451,11 +485,12 @@ class PNGCompressorGUI:
           self.root.after(
               0,
               self.finish_process,
-              "pngquant executable not found.",
+              "pngquant executable not found on system!",
               True,
           )
           return
 
+      # 2. Maximum Lossless Reduction via OxiPNG
       if use_oxi:
         cmd_oxipng = [
             oxipng_bin,
@@ -463,6 +498,8 @@ class PNGCompressorGUI:
             str(oxi_lvl),
             "--strip",
             "all",
+            "--interlace",
+            "0",
             target_filepath,
         ]
         try:
@@ -476,7 +513,7 @@ class PNGCompressorGUI:
           self.root.after(
               0,
               self.finish_process,
-              "oxipng executable not found.",
+              "oxipng executable not found on system!",
               True,
           )
           return
@@ -484,7 +521,7 @@ class PNGCompressorGUI:
     self.root.after(
         0,
         self.finish_process,
-        f"Completed: {total} PNG files processed.",
+        f"Completed successfully! {total} PNG frames optimized.",
         False,
     )
 
@@ -493,6 +530,9 @@ if __name__ == "__main__":
   root = tk.Tk()
   app = PNGCompressorGUI(root)
   root.mainloop()
+
+
+
 ```
 
 ---
