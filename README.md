@@ -91,7 +91,7 @@ class PNGCompressorGUI:
   def __init__(self, root):
     self.root = root
     self.root.title("PNG Sequence Optimizer")
-    self.root.geometry("580x670")
+    self.root.geometry("580x690")
     self.root.resizable(False, False)
 
     # Window Icon
@@ -107,7 +107,7 @@ class PNGCompressorGUI:
     self.save_mode = tk.StringVar(value="overwrite")
     self.tool_mode = tk.StringVar(value="Both (Pngquant + OxiPNG)")
 
-    # Compression tuning variables
+    # Compression variables
     self.min_q = tk.IntVar(value=50)
     self.max_q = tk.IntVar(value=80)
     self.max_colors = tk.IntVar(value=256)
@@ -116,7 +116,7 @@ class PNGCompressorGUI:
     self._build_ui()
 
   def _build_ui(self):
-    # 1. Folder Management
+    # 1. Directory Settings
     f_frame = ttk.LabelFrame(self.root, text=" Directory Settings ", padding=10)
     f_frame.pack(fill="x", padx=15, pady=8)
 
@@ -163,9 +163,11 @@ class PNGCompressorGUI:
     )
     self.dest_btn.pack(side="left")
 
-    # 2. Engine and Parameters Settings
+    # 2. Compression Parameters
     s_frame = ttk.LabelFrame(
-        self.root, text=" Compression Parameters ", padding=10
+        self.root,
+        text=" Compression Parameters (Mouse Scroll Supported) ",
+        padding=10,
     )
     s_frame.pack(fill="x", padx=15, pady=6)
 
@@ -185,7 +187,7 @@ class PNGCompressorGUI:
     self.engine_combo.pack(fill="x", pady=(2, 8))
     self.engine_combo.bind("<<ComboboxSelected>>", self.toggle_slider_states)
 
-    # Pngquant Quality Slider
+    # Pngquant Quality Slider (Min - Max)
     self.lbl_pq_title = ttk.Label(
         s_frame,
         text="Pngquant Quality Range (Min - Max):",
@@ -206,6 +208,7 @@ class PNGCompressorGUI:
     self.scale_min.pack(side="left", fill="x", expand=True, padx=5)
     self.lbl_min = ttk.Label(self.q_box, text=f"{self.min_q.get()}%", width=5)
     self.lbl_min.pack(side="left")
+    self.bind_scroll(self.scale_min, self.min_q, 10, 100, step=2, is_pct=True)
 
     ttk.Label(self.q_box, text="Max:").pack(side="left", padx=(10, 0))
     self.scale_max = ttk.Scale(
@@ -218,8 +221,9 @@ class PNGCompressorGUI:
     self.scale_max.pack(side="left", fill="x", expand=True, padx=5)
     self.lbl_max = ttk.Label(self.q_box, text=f"{self.max_q.get()}%", width=5)
     self.lbl_max.pack(side="left")
+    self.bind_scroll(self.scale_max, self.max_q, 10, 100, step=2, is_pct=True)
 
-    # Max Colors (Quantization Cap)
+    # Max Colors (Quantization Limit)
     ttk.Label(
         s_frame,
         text="Color Palette Limit (Max Colors):",
@@ -229,7 +233,7 @@ class PNGCompressorGUI:
     self.c_box.pack(fill="x", pady=2)
     self.scale_colors = ttk.Scale(
         self.c_box,
-        from_=32,
+        from_=16,
         to=256,
         variable=self.max_colors,
         command=lambda v: self.lbl_colors.config(text=str(int(float(v)))),
@@ -239,6 +243,9 @@ class PNGCompressorGUI:
         self.c_box, text=str(self.max_colors.get()), width=5
     )
     self.lbl_colors.pack(side="left")
+    self.bind_scroll(
+        self.scale_colors, self.max_colors, 16, 256, step=8, is_pct=False
+    )
 
     # OxiPNG Level Slider
     self.lbl_oxi_title = ttk.Label(
@@ -260,8 +267,9 @@ class PNGCompressorGUI:
     self.scale_oxi.pack(side="left", fill="x", expand=True, padx=5)
     self.lbl_oxi = ttk.Label(self.oxi_box, text=str(self.oxi_level.get()), width=5)
     self.lbl_oxi.pack(side="left")
+    self.bind_scroll(self.scale_oxi, self.oxi_level, 1, 6, step=1, is_pct=False)
 
-    # 3. Progress and Status
+    # 3. Progress Bar & Status
     self.prog_bar = ttk.Progressbar(self.root, mode="determinate")
     self.prog_bar.pack(fill="x", padx=15, pady=(10, 4))
 
@@ -307,6 +315,22 @@ class PNGCompressorGUI:
     github_label.bind(
         "<Button-1>", lambda e: webbrowser.open("https://github.com/shamssohag")
     )
+
+  def bind_scroll(self, widget, var, min_val, max_val, step=1, is_pct=False):
+    """মাউসের স্ক্রল হুইল দিয়ে যেকোনো স্লাইডারের মান পরিবর্তন করার ফাংশন"""
+
+    def on_scroll(event):
+      if str(widget.cget("state")) == "disabled":
+        return
+      # উইন্ডোজ মাউস হুইল আপ (delta > 0), ডাউন (delta < 0)
+      direction = 1 if event.delta > 0 else -1
+      current = var.get()
+      new_val = current + (direction * step)
+      new_val = max(min_val, min(max_val, new_val))
+      var.set(new_val)
+      widget.set(new_val)
+
+    widget.bind("<MouseWheel>", on_scroll)
 
   def show_about(self):
     about_text = (
@@ -364,13 +388,19 @@ class PNGCompressorGUI:
         text=f"Processing ({current}/{total}): {filename}", foreground="black"
     )
 
-  def finish_process(self, message, is_error=False):
+  def finish_process(self, message, target_dir, is_error=False):
     self.btn_run.config(state="normal")
     if is_error:
       self.status_lbl.config(text="Failed!", foreground="red")
       messagebox.showerror("Error", message)
     else:
       self.status_lbl.config(text="Done!", foreground="green")
+      # এনকোড শেষ হলে উইন্ডোজ ফাইল এক্সপ্লোরারে ফোল্ডারটি ওপেন হবে
+      if os.path.exists(target_dir):
+        try:
+          os.startfile(os.path.normpath(target_dir))
+        except Exception:
+          pass
       messagebox.showinfo("Success", message)
 
   def start_process_thread(self):
@@ -417,6 +447,7 @@ class PNGCompressorGUI:
           0,
           self.finish_process,
           f"Unable to read folder: {str(e)}",
+          dst,
           True,
       )
       return
@@ -427,6 +458,7 @@ class PNGCompressorGUI:
           0,
           self.finish_process,
           "No PNG files found in the source directory!",
+          dst,
           True,
       )
       return
@@ -452,6 +484,7 @@ class PNGCompressorGUI:
               0,
               self.finish_process,
               f"Failed to copy file: {str(e)}",
+              dst,
               True,
           )
           return
@@ -460,14 +493,14 @@ class PNGCompressorGUI:
 
       self.root.after(0, self.update_ui_progress, idx, total, f)
 
-      # 1. High-efficiency Pngquant Pipeline
+      # 1. Pngquant Processing
       if use_pq:
         cmd_pngquant = [
             pngquant_bin,
             f"--quality={min_val}-{max_val}",
             str(colors),
             "--speed",
-            "1",  # Brute-force optimal color matching
+            "1",
             "--strip",
             "--ext",
             ".png",
@@ -486,11 +519,12 @@ class PNGCompressorGUI:
               0,
               self.finish_process,
               "pngquant executable not found on system!",
+              dst,
               True,
           )
           return
 
-      # 2. Maximum Lossless Reduction via OxiPNG
+      # 2. OxiPNG Processing
       if use_oxi:
         cmd_oxipng = [
             oxipng_bin,
@@ -514,6 +548,7 @@ class PNGCompressorGUI:
               0,
               self.finish_process,
               "oxipng executable not found on system!",
+              dst,
               True,
           )
           return
@@ -521,7 +556,8 @@ class PNGCompressorGUI:
     self.root.after(
         0,
         self.finish_process,
-        f"Completed successfully! {total} PNG frames optimized.",
+        f"Optimization complete! {total} PNG frames processed.",
+        dst,
         False,
     )
 
