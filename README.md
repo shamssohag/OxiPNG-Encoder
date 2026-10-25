@@ -4,6 +4,9 @@ PNG Sequence Optimizer is a desktop graphical tool built with Python to batch-co
 
 The application leverages **Pngquant** (lossy palette quantization with alpha transparency) and **OxiPNG** (lossless stream optimization and chunk stripping) to significantly reduce storage footprint without sacrificing visual quality or transparency.
 
+[Download Latest Release.exe)
+https://github.com/shamssohag/OxiPNG-Encoder/releases/latest
+
 ---
 
 ## Features
